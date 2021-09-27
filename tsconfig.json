@@ -6,9 +6,12 @@
         "target": "ES6",
         "jsx":"react",
         "allowSyntheticDefaultImports": true,
-        "outDir": "./out",
-        "sourceMap": true
+        "outDir": "./lib",
+        "sourceMap": false
     },    
+    "include": [
+        "src/**/*"
+    ],
     "exclude": [
         "node_modules"
     ],
