@@ -95,7 +95,7 @@ function parse(source: string): INode {
             }
             
             else if(char === '<') {
-                new Error('todo: error-5')
+                throw new Error('todo: error-5')
             } 
 
             else if(char === '"' || char === '\'' || char === '`') {
@@ -171,6 +171,7 @@ function parse(source: string): INode {
         let textNode: INode = null
         const flushText = () => {
             if(textNode) {
+                console.log('ss-:', textNode)
                 parent.children.push(textNode)
                 textNode = null
             }
@@ -211,6 +212,7 @@ function parse(source: string): INode {
 
                 if(node.closed) continue
                 walk(node)
+                continue
             }
 
             if(!textNode) {
