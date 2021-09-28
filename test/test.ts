@@ -1,10 +1,7 @@
 import { parse } from '../src/parser'
 
 const template = `
-    <div test test1="qwe"> 
-        sdf 
-        <span>qwe</span>
-    </div>
+    <div l-for="item in items" :key = "item" test></div>
 `
 
-console.log(parse(template))
+console.log(parse(template).children[1])

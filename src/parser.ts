@@ -42,6 +42,7 @@ function parse(source: string): INode {
         const flushAttr = () => {
             if(!attrStart) return
 
+            console.log(source.slice(attrStart, valueStart ? valueStart - 1 : index), valueStart, valueEnd, readyResolveValue)
             // clearSpacingAndEqPat
             const name = source.slice(attrStart, valueStart ? valueStart - 1 : index).replace(/[ ]*=[ ]*$/, '')
 
@@ -50,7 +51,7 @@ function parse(source: string): INode {
                 errors(Errors.LackPropertyValue, { attr: name, line, column })
             }
 
-            let value
+            let value: boolean | string
             if(!valueStart) value = true
             else value = source.slice(valueStart, valueEnd)
             
@@ -72,6 +73,7 @@ function parse(source: string): INode {
             if(char !== '>' && char !== '/' && !resolveTagName && !attrStart && /\S/.test(char)) attrStart = index
             // resolve end
             if(char === '>') {
+                if(attrStart) flushAttr()
                 // 不需要关闭符
                 const autoCloseTags = ['fragment', 'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']
                 const autoCloseTag = autoCloseTags.indexOf(tag) !== -1
@@ -94,10 +96,13 @@ function parse(source: string): INode {
                 flushAttr()
             }
             
+            // tag start
             else if(char === '<') {
                 throw new Error('todo: error-5')
             } 
 
+            // attributes value start
+            // eg: l-key="value"
             else if(char === '"' || char === '\'' || char === '`') {
                 if(readyResolveValue) {
                     readyResolveValue = false
@@ -123,10 +128,16 @@ function parse(source: string): INode {
 
             else if(char === '=') {
                 readyResolveValue = true
-            }  else if(attrStart && /\s/.test(char) && /\S/.test(source[index + 1])) {
-                flushAttr()
+            } 
+
+            else if(attrStart && /\s/.test(char)) {
                 continue
             }
+            
+            // else if(attrStart && /\s/.test(char) && /\S/.test(source[index + 1])) {
+            //     flushAttr()
+            //     continue
+            // }
 
             if(resolveTagName) {
                 /**
@@ -171,7 +182,6 @@ function parse(source: string): INode {
         let textNode: INode = null
         const flushText = () => {
             if(textNode) {
-                console.log('ss-:', textNode)
                 parent.children.push(textNode)
                 textNode = null
             }
