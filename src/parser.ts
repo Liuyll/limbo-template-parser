@@ -232,7 +232,6 @@ function parse(source: string): INode {
     }
 
     walk(root)
-    debugger
     return root
 }
 

@@ -1,13 +1,13 @@
 {
     "compilerOptions": {
-        "module": "commonjs",
+        "module": "es6",
         "lib": ["es2017","es6","dom"],
         "experimentalDecorators": true,
         "target": "ES6",
-        "jsx":"react",
         "allowSyntheticDefaultImports": true,
-        "outDir": "./lib",
-        "sourceMap": false
+        "outDir": "./lib/esm",
+        "sourceMap": false,
+        "moduleResolution": "node"
     },    
     "include": [
         "src/**/*"
