@@ -1,12 +1,23 @@
 import { Errors, errors } from './error'
 import { INode, ICommentNode } from './interface'
 
+const innerDirectiveLists = {
+    'l-for': 4,
+    'l-if': 3,
+    'l-else': 5,
+    'l-elif': 5,
+    'l-bind': 5,
+    'l-key': 4,
+}
+
 function parse(source: string): INode {
     // readNext index++ = 0
     let index = -1
     let line = 1
     let column = 0
     const debugMap = {}
+
+    let unEndCondition = false // 未结束的l-if
 
     const readComment = (): string => {
         const start = index
@@ -38,16 +49,19 @@ function parse(source: string): INode {
         let valueEnd: number
         const attributes = []
         let binding: number = 0
+        let unHandleSpacing = false // 未处理的空格
+        let existCondition = false
 
         const flushAttr = () => {
             if(!attrStart) return
 
-            console.log(source.slice(attrStart, valueStart ? valueStart - 1 : index), valueStart, valueEnd, readyResolveValue)
             // clearSpacingAndEqPat
-            const name = source.slice(attrStart, valueStart ? valueStart - 1 : index).replace(/[ ]*=[ ]*$/, '')
+            // eg: key = value | key (spacing suffix) 
+            const name = source.slice(attrStart, valueStart ? valueStart - 1 : index).replace(/[ ]*=?[ ]*$/, '')
 
             if(readyResolveValue && !valueStart && !valueEnd) {
                 const { line, column } =  debugMap[attrStart]
+                console.log(attrStart, valueStart)
                 errors(Errors.LackPropertyValue, { attr: name, line, column })
             }
 
@@ -65,21 +79,56 @@ function parse(source: string): INode {
             valueStart = null
             valueEnd = null
             readyResolveValue = false
+            unHandleSpacing = false
         }
 
         while(true) {
             char = readNext()
             if(index === source.length) errors(Errors.ResolveOverflowLength)
-            if(char !== '>' && char !== '/' && !resolveTagName && !attrStart && /\S/.test(char)) attrStart = index
+
+            // l-xxx 内置指令
+            if(char === 'l' && peep(1) === '-') {
+                // 最长的指令是l-else
+                const maybeDirectiveStr = char + peep(5).replace(' ', '').replace(/=.*/, "")
+                if(maybeDirectiveStr in innerDirectiveLists) {
+                    // check
+                    if(maybeDirectiveStr === 'l-else' || maybeDirectiveStr === 'l-elif') {
+                        if(!unEndCondition) errors(Errors.UnexpectedConditionDirective, {condition: maybeDirectiveStr, line, column})
+                        existCondition = true
+                    }
+
+                    if(maybeDirectiveStr === 'l-if') {
+                        existCondition = true
+                        unEndCondition = true
+                    }
+
+                    const directiveLength = innerDirectiveLists[maybeDirectiveStr]
+ 
+                    attrStart = index
+                    readSkipNest(directiveLength)
+                    continue 
+                }
+            }
+
+            // attrName start
+            if(char !== '>' && char !== '/' && !resolveTagName && /\S/.test(char)) {
+                if(unHandleSpacing && attrStart) {
+                    flushAttr()
+                    attrStart = index
+                } else if(!attrStart) attrStart = index
+            }
+
             // resolve end
             if(char === '>') {
+                // attr没有处理完
                 if(attrStart) flushAttr()
+
                 // 不需要关闭符
                 const autoCloseTags = ['fragment', 'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']
                 const autoCloseTag = autoCloseTags.indexOf(tag) !== -1
                 
                 // <tag />
-                const isClose = source[index - 1] === '/'
+                const isClose = peep(-1) === '/'
 
                 const tagNode: INode = {
                     tag,
@@ -88,7 +137,8 @@ function parse(source: string): INode {
                     attributes,
                     closed: isClose || autoCloseTag
                 }
-                
+
+                if(!existCondition) unEndCondition = false
                 return tagNode
             }
 
@@ -131,6 +181,7 @@ function parse(source: string): INode {
             } 
 
             else if(attrStart && /\s/.test(char)) {
+                unHandleSpacing = true
                 continue
             }
             
@@ -150,6 +201,7 @@ function parse(source: string): INode {
                 }
             }
         }
+
     }
 
     const readNext = (): string => {
@@ -178,6 +230,11 @@ function parse(source: string): INode {
         return char
     }
 
+    const peep = (skip: number): string => {
+        if(skip < 0) return source.slice(index + skip, index)
+        return source.slice(index + 1, index + skip + 1)
+    }
+
     const walk = (parent: INode) => {
         let textNode: INode = null
         const flushText = () => {
@@ -204,7 +261,7 @@ function parse(source: string): INode {
                 }
 
                 // close
-                else if(source[index + 1] === '/') {
+                else if(peep(1) === '/') {
                     let tag = ''
                     let char = readSkipNest(2)
                     while(char !== '>' && index < source.length) {

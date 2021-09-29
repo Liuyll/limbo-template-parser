@@ -19,9 +19,20 @@ interface INodeAttr {
     decorator ?: string
 }
 
+type ParserAttr = {
+    name: string,
+    value: string
+}
+
+type LimboAttr = {
+    dataKey?: string
+} & ParserAttr
+
 export {
     INode,
     ITextNode,
     ICommentNode,
-    INodeAttr
+    INodeAttr,
+    ParserAttr,
+    LimboAttr
 }
