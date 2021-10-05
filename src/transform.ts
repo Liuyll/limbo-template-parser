@@ -108,7 +108,6 @@ const compileCondChildren = (Merges: Merge[], _children: (INode | Merge)[]) => {
 
     for(let i = handleChildIdx; i < children.length; i++) handledChildren.push(children[i] as INode)
 
-    console.log(handledChildren, children)
     return handledChildren
 }
 
