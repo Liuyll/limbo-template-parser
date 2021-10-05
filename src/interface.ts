@@ -4,7 +4,8 @@ interface INode {
     type: string,
     attributes ?: INodeAttr[],
     closed: boolean,
-    content ?: string
+    content ?: string,
+    condition ?: boolean
 }
 
 interface ITextNode extends INode {

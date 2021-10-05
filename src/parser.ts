@@ -17,8 +17,6 @@ function parse(source: string): INode {
     let column = 0
     const debugMap = {}
 
-    let unEndCondition = false // 未结束的l-if
-
     const readComment = (): string => {
         const start = index
         let comment: string
@@ -41,7 +39,7 @@ function parse(source: string): INode {
     /**
      * resolve <tag attr1 attr2> || <tag attr1 attr2 /> (closed)
      */
-    const readTag = (): INode => {
+    const readTag = (sibling: INode | null): INode => {
         let resolveTagName = true
         let resolveDirective = false // handle l-for etc...
         let char: string
@@ -96,15 +94,12 @@ function parse(source: string): INode {
                 const maybeDirectiveStr = char + peep(5).replace(' ', '').replace(/=.*/, "")
                 if(maybeDirectiveStr in innerDirectiveLists) {
                     // check
-                    if(maybeDirectiveStr === 'l-else' || maybeDirectiveStr === 'l-elif') {
-                        if(!unEndCondition) errors(Errors.UnexpectedConditionDirective, { condition: maybeDirectiveStr, line, column })
-                        existCondition = true
+                    if(maybeDirectiveStr === 'l-else' || maybeDirectiveStr === 'l-elif' && (sibling && !sibling.condition)) {
+                        console.log(sibling)
+                        errors(Errors.UnexpectedConditionDirective, { condition: maybeDirectiveStr, line, column })
                     }
 
-                    if(maybeDirectiveStr === 'l-if') {
-                        existCondition = true
-                        unEndCondition = true
-                    }
+                    if(maybeDirectiveStr === 'l-if' || maybeDirectiveStr === 'l-elif') existCondition = true
 
                     const directiveLength = innerDirectiveLists[maybeDirectiveStr]
  
@@ -140,10 +135,10 @@ function parse(source: string): INode {
                     children: [],
                     type: 'node',
                     attributes,
-                    closed: isClose || autoCloseTag
+                    closed: isClose || autoCloseTag,
+                    condition: existCondition
                 }
 
-                if(!existCondition) unEndCondition = false
                 return tagNode
             }
 
@@ -180,7 +175,7 @@ function parse(source: string): INode {
 
             else if(char === '=') {
                 readyResolveValue = true
-            } 
+            }
 
             else if(attrStart && /\s/.test(char)) {
                 unHandleSpacing = true
@@ -203,7 +198,6 @@ function parse(source: string): INode {
                 }
             }
         }
-
     }
 
     const readNext = (): string => {
@@ -271,8 +265,9 @@ function parse(source: string): INode {
                 // close
                 else if(peep(1) === '/') {
                     let tag = ''
-                    let char = readSkipNest(2)
+                    let char = readSkipNest(2) // match '<tag />'
                     while(char !== '>' && index < source.length) {
+                        // match <tag></tag>
                         tag += char
                         char = readNext()
                     }
@@ -280,9 +275,9 @@ function parse(source: string): INode {
                         errors(Errors.UnexpectedTagClose, { line, column, tag, correct: parent.tag })
                     }
                     return
-                } 
+                }
 
-                const node = readTag()
+                const node = readTag(parent?.children?.slice(-1)[0])
                 parent.children.push(node)
 
                 if(node.closed) continue
@@ -311,6 +306,13 @@ function parse(source: string): INode {
                 binding--
                 if(!binding) flushText()
                 else addCharToContent(char)
+                continue
+            }
+
+            // 屏蔽条件渲染后的空格，换行等符号
+            // eg: <tag l-if=""/>   <tag l-else"">
+            // 上面代码的中间空格不应该被解析为textNode
+            if(!textNode && parent?.children?.slice(-1)[0]?.condition && (char === ' ' || char === '\n' || char === '\r\n')) {
                 continue
             }
 

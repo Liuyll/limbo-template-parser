@@ -67,10 +67,13 @@ const errors = (type: Errors, options ?: ErrorOptions) => {
             break
         case Errors.UnexpectedConditionDirective:
             str = unexpectedConditionDirective(options)
+            break
         case Errors.UnexpectedRightBrace:
             str = unexpectedRightBrace(options)
+            break
         case Errors.UnexpectedChar:
             str = unexpectedChar(options)
+            break
     }
 
     throw new Error(str)
