@@ -24,9 +24,17 @@ type ParserAttr = {
     value: string
 }
 
-type LimboAttr = {
+type LimboBindAttr = {
     dataKey?: string
-} & ParserAttr
+}
+
+type LimboForAttr = {
+    forBody?: string,
+    forVal?: string,
+    forIdx?: string
+}
+
+type LimboAttr = LimboBindAttr & LimboForAttr & Partial<ParserAttr>
 
 export {
     INode,

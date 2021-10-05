@@ -29,7 +29,7 @@ function parse(source: string): INode {
                 comment = source.slice(start, index)
                 break
             } 
-           char = readNext()
+            char = readNext()
         }
         if(!comment) {
             errors(Errors.CommentNotMatchEnd, { line, column })
@@ -38,19 +38,22 @@ function parse(source: string): INode {
         return comment
     }
 
+    /**
+     * resolve <tag attr1 attr2> || <tag attr1 attr2 /> (closed)
+     */
     const readTag = (): INode => {
         let resolveTagName = true
-
+        let resolveDirective = false // handle l-for etc...
         let char: string
         let tag = ''
         let attrStart: number
         let readyResolveValue = false
         let valueStart: number
         let valueEnd: number
-        const attributes = []
-        let binding: number = 0
         let unHandleSpacing = false // 未处理的空格
         let existCondition = false
+
+        const attributes = []
 
         const flushAttr = () => {
             if(!attrStart) return
@@ -61,7 +64,6 @@ function parse(source: string): INode {
 
             if(readyResolveValue && !valueStart && !valueEnd) {
                 const { line, column } =  debugMap[attrStart]
-                console.log(attrStart, valueStart)
                 errors(Errors.LackPropertyValue, { attr: name, line, column })
             }
 
@@ -80,8 +82,10 @@ function parse(source: string): INode {
             valueEnd = null
             readyResolveValue = false
             unHandleSpacing = false
+            resolveDirective = false
         }
 
+        // eslint-disable-next-line no-constant-condition
         while(true) {
             char = readNext()
             if(index === source.length) errors(Errors.ResolveOverflowLength)
@@ -93,7 +97,7 @@ function parse(source: string): INode {
                 if(maybeDirectiveStr in innerDirectiveLists) {
                     // check
                     if(maybeDirectiveStr === 'l-else' || maybeDirectiveStr === 'l-elif') {
-                        if(!unEndCondition) errors(Errors.UnexpectedConditionDirective, {condition: maybeDirectiveStr, line, column})
+                        if(!unEndCondition) errors(Errors.UnexpectedConditionDirective, { condition: maybeDirectiveStr, line, column })
                         existCondition = true
                     }
 
@@ -105,6 +109,7 @@ function parse(source: string): INode {
                     const directiveLength = innerDirectiveLists[maybeDirectiveStr]
  
                     attrStart = index
+                    resolveDirective = true
                     readSkipNest(directiveLength)
                     continue 
                 }
@@ -112,7 +117,7 @@ function parse(source: string): INode {
 
             // attrName start
             if(char !== '>' && char !== '/' && !resolveTagName && /\S/.test(char)) {
-                if(unHandleSpacing && attrStart) {
+                if(unHandleSpacing && attrStart && !resolveDirective) {
                     flushAttr()
                     attrStart = index
                 } else if(!attrStart) attrStart = index
@@ -166,14 +171,11 @@ function parse(source: string): INode {
             }
 
             else if(char === '{') {
-                if(readyResolveValue) readyResolveValue = false
-                binding++
-            } 
+                errors(Errors.UnexpectedChar, {column, line, char})
+            }
 
             else if(char === '}') {
-                if(!binding) new Error('todo: error-4')
-                binding--
-                if(!binding) flushAttr()
+                errors(Errors.UnexpectedChar, {column, line, char})
             }
 
             else if(char === '=') {
@@ -237,6 +239,8 @@ function parse(source: string): INode {
 
     const walk = (parent: INode) => {
         let textNode: INode = null
+        let binding: number = 0
+
         const flushText = () => {
             if(textNode) {
                 parent.children.push(textNode)
@@ -244,7 +248,11 @@ function parse(source: string): INode {
             }
         }
 
-        
+        const addCharToContent = (c: string) => {
+            if(!textNode) throw new Error('textNode is not existed.')
+            textNode.content += c
+        }
+
         while(index < source.length) {
             let char = readNext()
             if(char === '<') {
@@ -282,6 +290,30 @@ function parse(source: string): INode {
                 continue
             }
 
+            if(char === '{') {
+                if(textNode) {
+                    if(!binding) flushText()
+                    else addCharToContent(char)
+                } else {
+                    textNode = {
+                        type: 'expression',
+                        content: '',
+                        closed: true
+                    }
+                }
+
+                binding++                
+                continue
+            }
+
+            if(char === '}') {
+                if(!binding) errors(Errors.UnexpectedRightBrace, {line, column})
+                binding--
+                if(!binding) flushText()
+                else addCharToContent(char)
+                continue
+            }
+
             if(!textNode) {
                 textNode = {
                     type: 'text',
@@ -289,7 +321,8 @@ function parse(source: string): INode {
                     closed: true
                 }
             }
-            textNode.content += char
+
+            addCharToContent(char)
         }
     }
 

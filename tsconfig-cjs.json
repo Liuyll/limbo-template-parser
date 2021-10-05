@@ -6,7 +6,10 @@
         "target": "ES6",
         "allowSyntheticDefaultImports": true,
         "outDir": "./lib",
-        "sourceMap": false
+        "sourceMap": false,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "incremental": true
     },    
     "include": [
         "src/**/*"

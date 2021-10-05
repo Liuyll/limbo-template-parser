@@ -4,6 +4,16 @@ type ErrorOptions = {
     [key: string]: any
 }
 
+const unexpectedChar = (options: ErrorOptions): string => {
+    const { char, line, column } = options
+    return `unexpected char '${char}'. position: line: ${line}, column: ${column}`
+}
+
+const unexpectedRightBrace = (options: ErrorOptions): string => {
+    const { line, column } = options
+    return `right brace have't match left brace. position: line: ${line}, column: ${column}`
+}
+
 const commentNotMatchEnd = (options: ErrorOptions): string => {
     const { line, column } = options
     return `comment is not end flag. position: line: ${line}, column: ${column}`
@@ -23,7 +33,7 @@ const lackPropertyValue = (options: ErrorOptions): string => {
     return `attr:${attr} lack property value but got an "=". position: line: ${line}, column: ${column}`
 }
 
-const UnexpectedConditionDirective = (options: ErrorOptions): string => {
+const unexpectedConditionDirective = (options: ErrorOptions): string => {
     const {condition, line, column} = options
     return `unexpected condition directive ${condition} line: ${line}, column: ${column}`
 }
@@ -33,8 +43,10 @@ enum Errors {
     CommentNotMatchEnd = 0,
     UnexpectedTagClose,
     ResolveOverflowLength,
-    LackPropertyValue,
-    UnexpectedConditionDirective // 不正确位置的l-elif、l-else
+    LackPropertyValue, // 存在等号却没有对应的value
+    UnexpectedConditionDirective, // 不正确位置的l-elif、l-else
+    UnexpectedRightBrace, // 没有对应匹配的大括号,
+    UnexpectedChar, // 不能解析的符号
 }
 
 const errors = (type: Errors, options ?: ErrorOptions) => {
@@ -54,7 +66,11 @@ const errors = (type: Errors, options ?: ErrorOptions) => {
             str = lackPropertyValue(options)
             break
         case Errors.UnexpectedConditionDirective:
-            str = UnexpectedConditionDirective(options)
+            str = unexpectedConditionDirective(options)
+        case Errors.UnexpectedRightBrace:
+            str = unexpectedRightBrace(options)
+        case Errors.UnexpectedChar:
+            str = unexpectedChar(options)
     }
 
     throw new Error(str)

@@ -7,7 +7,10 @@
         "allowSyntheticDefaultImports": true,
         "outDir": "./lib/esm",
         "sourceMap": false,
-        "moduleResolution": "node"
+        "moduleResolution": "node",
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "incremental": true
     },    
     "include": [
         "src/**/*"
