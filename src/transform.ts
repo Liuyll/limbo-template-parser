@@ -155,7 +155,7 @@ const transform = (node: INode): INode => {
                     forBody: data,
                     forVal: maybeIdxAndVal[0],
                     forIdx: maybeIdxAndVal[1],
-                    comp: child,
+                    comp: transform(child),
                     type: MergeType.ForMerge,
                     idx: idx
                 }
@@ -190,7 +190,9 @@ const transform = (node: INode): INode => {
             }
 
             child.attributes.splice(condIdx, 1)
-        }        
+        }
+
+        if(!circularIdx && !descriminat) children[idx] = transform(child)
     }
 
     if(Merges.length) node.children = compileCondChildren(Merges, children as (Merge | INode)[]) as any
