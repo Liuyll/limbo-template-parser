@@ -234,6 +234,7 @@ function parse(source: string): INode {
     const walk = (parent: INode) => {
         let textNode: INode = null
         let binding: number = 0
+        let commentsStart: boolean = false
 
         const flushText = () => {
             if(textNode) {
@@ -249,6 +250,23 @@ function parse(source: string): INode {
 
         while(index < source.length) {
             let char = readNext()
+
+            if(char === '\n' || (char === '\r' && peep(1) === '\n')) {
+                if(commentsStart) {
+                    commentsStart = false
+                    continue
+                }
+            }
+
+            if(commentsStart) continue
+
+            // comments
+            if(char === '/' && peep(1) === '/') {
+                commentsStart = true
+                readSkipNest(1)
+                continue
+            }
+
             if(char === '<') {
                 flushText()
 

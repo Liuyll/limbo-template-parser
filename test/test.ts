@@ -1,7 +1,12 @@
 import { parse } from '../src/parser'
 import { transform } from '../src/transform'
 
-const template = `<div l-bind:class="d" l-if="d"><button @click="() => setD(false)">zxcc</button></div>
-<div l-elif="e"><button @click="() => setD(true)">else</button></div>`
+const template = `
+    <div>
+        <div>12</div>
+        // <div>343r</div>
+        <div>fds</div>
+    </div>
+`
 
-console.log(parse(template).children[0].attributes)
+console.log(parse(template).children[1].children)
